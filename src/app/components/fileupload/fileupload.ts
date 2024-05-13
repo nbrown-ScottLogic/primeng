@@ -23,7 +23,8 @@ import {
     ViewChild,
     ViewEncapsulation,
     booleanAttribute,
-    numberAttribute
+    numberAttribute,
+    signal
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { BlockableUI, Message, PrimeNGConfig, PrimeTemplate, SharedModule, TranslationKeys } from 'primeng/api';
@@ -37,7 +38,7 @@ import { ProgressBarModule } from 'primeng/progressbar';
 import { RippleModule } from 'primeng/ripple';
 import { VoidListener } from 'primeng/ts-helpers';
 import { Subscription } from 'rxjs';
-import { FileBeforeUploadEvent, FileProgressEvent, FileRemoveEvent, FileSelectEvent, FileSendEvent, FileUploadErrorEvent, FileUploadEvent, FileUploadHandlerEvent } from './fileupload.interface';
+import { FileBeforeUploadEvent, FileProgressEvent, FileRemoveEvent, FileSelectEvent, FileSendEvent, FileUploadErrorEvent, FileUploadEvent, FileUploadHandlerEvent, RemoveUploadedFileEvent } from './fileupload.interface';
 /**
  * FileUpload is an advanced uploader with dragdrop support, multi file uploads, auto uploading, progress tracking and validations.
  * @group Components
@@ -46,59 +47,73 @@ import { FileBeforeUploadEvent, FileProgressEvent, FileRemoveEvent, FileSelectEv
     selector: 'p-fileUpload',
     template: `
         <div [ngClass]="'p-fileupload p-fileupload-advanced p-component'" [ngStyle]="style" [class]="styleClass" *ngIf="mode === 'advanced'" [attr.data-pc-name]="'fileupload'" [attr.data-pc-section]="'root'">
+            <input
+                [attr.aria-label]="browseFilesLabel"
+                #advancedfileinput
+                type="file"
+                (change)="onFileSelect($event)"
+                [multiple]="multiple"
+                [accept]="accept"
+                [disabled]="disabled || isChooseDisabled()"
+                [attr.title]="''"
+                [attr.data-pc-section]="'input'"
+                [style.display]="'none'"
+            />
             <div class="p-fileupload-buttonbar" [attr.data-pc-section]="'buttonbar'">
-                <span
-                    class="p-button p-component p-fileupload-choose"
-                    [ngClass]="{ 'p-focus': focus, 'p-disabled': disabled || isChooseDisabled() }"
-                    (focus)="onFocus()"
-                    (blur)="onBlur()"
-                    pRipple
-                    (click)="choose()"
-                    (keydown.enter)="choose()"
-                    tabindex="0"
-                    [class]="chooseStyleClass"
-                    [attr.data-pc-section]="'choosebutton'"
-                >
-                    <input
-                        [attr.aria-label]="browseFilesLabel"
-                        #advancedfileinput
-                        type="file"
-                        (change)="onFileSelect($event)"
-                        [multiple]="multiple"
-                        [accept]="accept"
-                        [disabled]="disabled || isChooseDisabled()"
-                        [attr.title]="''"
-                        [attr.data-pc-section]="'input'"
-                    />
-                    <span *ngIf="chooseIcon" [ngClass]="'p-button-icon p-button-icon-left'" [class]="chooseIcon" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'"></span>
-                    <ng-container *ngIf="!chooseIcon">
-                        <PlusIcon *ngIf="!chooseIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'" />
-                        <span *ngIf="chooseIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'">
-                            <ng-template *ngTemplateOutlet="chooseIconTemplate"></ng-template>
-                        </span>
-                    </ng-container>
-                    <span class="p-button-label" [attr.data-pc-section]="'choosebuttonlabel'">{{ chooseButtonLabel }}</span>
-                </span>
+                <ng-container *ngIf="!headerTemplate">
+                    <span
+                        class="p-button p-component p-fileupload-choose"
+                        [ngClass]="{ 'p-focus': focus, 'p-disabled': disabled || isChooseDisabled() }"
+                        (focus)="onFocus()"
+                        (blur)="onBlur()"
+                        pRipple
+                        (click)="choose()"
+                        (keydown.enter)="choose()"
+                        tabindex="0"
+                        [class]="chooseStyleClass"
+                        [attr.data-pc-section]="'choosebutton'"
+                    >
+                        <input
+                            [attr.aria-label]="browseFilesLabel"
+                            #advancedfileinput
+                            type="file"
+                            (change)="onFileSelect($event)"
+                            [multiple]="multiple"
+                            [accept]="accept"
+                            [disabled]="disabled || isChooseDisabled()"
+                            [attr.title]="''"
+                            [attr.data-pc-section]="'input'"
+                        />
+                        <span *ngIf="chooseIcon" [ngClass]="'p-button-icon p-button-icon-left'" [class]="chooseIcon" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'"></span>
+                        <ng-container *ngIf="!chooseIcon">
+                            <PlusIcon *ngIf="!chooseIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'" />
+                            <span *ngIf="chooseIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-label]="true" [attr.data-pc-section]="'chooseicon'">
+                                <ng-template *ngTemplateOutlet="chooseIconTemplate"></ng-template>
+                            </span>
+                        </ng-container>
+                        <span class="p-button-label" [attr.data-pc-section]="'choosebuttonlabel'">{{ chooseButtonLabel }}</span>
+                    </span>
 
-                <p-button *ngIf="!auto && showUploadButton" type="button" [label]="uploadButtonLabel" (onClick)="upload()" [disabled]="!hasFiles() || isFileLimitExceeded()" [styleClass]="uploadStyleClass">
-                    <span *ngIf="uploadIcon" [ngClass]="uploadIcon" [attr.aria-hidden]="true" class="p-button-icon p-button-icon-left"></span>
-                    <ng-container *ngIf="!uploadIcon">
-                        <UploadIcon *ngIf="!uploadIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" />
-                        <span *ngIf="uploadIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-hidden]="true">
-                            <ng-template *ngTemplateOutlet="uploadIconTemplate"></ng-template>
-                        </span>
-                    </ng-container>
-                </p-button>
-                <p-button *ngIf="!auto && showCancelButton" type="button" [label]="cancelButtonLabel" (onClick)="clear()" [disabled]="!hasFiles() || uploading" [styleClass]="cancelStyleClass">
-                    <span *ngIf="cancelIcon" [ngClass]="cancelIcon" class="p-button-icon p-button-icon-left"></span>
-                    <ng-container *ngIf="!cancelIcon">
-                        <TimesIcon *ngIf="!cancelIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" [attr.aria-hidden]="true" />
-                        <span *ngIf="cancelIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-hidden]="true">
-                            <ng-template *ngTemplateOutlet="cancelIconTemplate"></ng-template>
-                        </span>
-                    </ng-container>
-                </p-button>
-
+                    <p-button *ngIf="!auto && showUploadButton" type="button" [label]="uploadButtonLabel" (onClick)="upload()" [disabled]="!hasFiles() || isFileLimitExceeded()" [styleClass]="uploadStyleClass">
+                        <span *ngIf="uploadIcon" [ngClass]="uploadIcon" [attr.aria-hidden]="true" class="p-button-icon p-button-icon-left"></span>
+                        <ng-container *ngIf="!uploadIcon">
+                            <UploadIcon *ngIf="!uploadIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" />
+                            <span *ngIf="uploadIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-hidden]="true">
+                                <ng-template *ngTemplateOutlet="uploadIconTemplate"></ng-template>
+                            </span>
+                        </ng-container>
+                    </p-button>
+                    <p-button *ngIf="!auto && showCancelButton" type="button" [label]="cancelButtonLabel" (onClick)="clear()" [disabled]="!hasFiles() || uploading" [styleClass]="cancelStyleClass">
+                        <span *ngIf="cancelIcon" [ngClass]="cancelIcon" class="p-button-icon p-button-icon-left"></span>
+                        <ng-container *ngIf="!cancelIcon">
+                            <TimesIcon *ngIf="!cancelIconTemplate" [styleClass]="'p-button-icon p-button-icon-left'" [attr.aria-hidden]="true" />
+                            <span *ngIf="cancelIconTemplate" class="p-button-icon p-button-icon-left" [attr.aria-hidden]="true">
+                                <ng-template *ngTemplateOutlet="cancelIconTemplate"></ng-template>
+                            </span>
+                        </ng-container>
+                    </p-button>
+                </ng-container>
+                <ng-container *ngTemplateOutlet="headerTemplate; context: { $implicit: files, uploadedFiles: uploadedFiles, chooseCallback: choose.bind(this), clearCallback: clear.bind(this), uploadCallback: upload.bind(this) }"></ng-container>
                 <ng-container *ngTemplateOutlet="toolbarTemplate"></ng-container>
             </div>
             <div #content class="p-fileupload-content" (dragenter)="onDragEnter($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)" [attr.data-pc-section]="'content'">
@@ -124,7 +139,12 @@ import { FileBeforeUploadEvent, FileProgressEvent, FileRemoveEvent, FileSelectEv
                         <ng-template ngFor [ngForOf]="files" [ngForTemplate]="fileTemplate"></ng-template>
                     </div>
                 </div>
-                <ng-container *ngTemplateOutlet="contentTemplate; context: { $implicit: files }"></ng-container>
+                <ng-container
+                    *ngTemplateOutlet="contentTemplate; context: { $implicit: files, uploadedFiles: uploadedFiles, removeUploadedFileCallback: removeUploadedFile.bind(this), removeFileCallback: remove.bind(this), progress: progress, messages: msgs }"
+                ></ng-container>
+                <div *ngIf="emptyTemplate && !hasFiles() && !hasUploadedFiles()" class="p-fileupload-empty">
+                    <ng-container *ngTemplateOutlet="emptyTemplate"></ng-container>
+                </div>
             </div>
         </div>
         <div class="p-fileupload p-fileupload-basic p-component" *ngIf="mode === 'basic'" [attr.data-pc-name]="'fileupload'">
@@ -331,7 +351,7 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
      * Maximum number of files that can be uploaded.
      * @group Props
      */
-    @Input({ transform: numberAttribute }) fileLimit: number | undefined;
+    @Input({ transform: (value: unknown) => numberAttribute(value, null) }) fileLimit: number | undefined;
     /**
      * Style class of the upload button.
      * @group Props
@@ -412,6 +432,12 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
      * @group Emits
      */
     @Output() onImageError: EventEmitter<Event> = new EventEmitter<Event>();
+    /**
+     * This event is triggered if an error occurs while loading an image file.
+     * @param {RemoveUploadedFileEvent} event - Remove event.
+     * @group Emits
+     */
+    @Output() onRemoveUploadedFile: EventEmitter<RemoveUploadedFileEvent> = new EventEmitter<RemoveUploadedFileEvent>();
 
     @ContentChildren(PrimeTemplate) templates: QueryList<PrimeTemplate> | undefined;
 
@@ -459,6 +485,8 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
 
     public fileTemplate: TemplateRef<any> | undefined;
 
+    public headerTemplate: TemplateRef<any> | undefined;
+
     public contentTemplate: TemplateRef<any> | undefined;
 
     public toolbarTemplate: TemplateRef<any> | undefined;
@@ -468,6 +496,8 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
     uploadIconTemplate: TemplateRef<any> | undefined;
 
     cancelIconTemplate: TemplateRef<any> | undefined;
+
+    emptyTemplate: TemplateRef<any> | undefined;
 
     public uploadedFileCount: number = 0;
 
@@ -480,6 +510,8 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
     translationSubscription: Subscription | undefined;
 
     dragOverListener: VoidListener;
+
+    public uploadedFiles = [];
 
     constructor(
         @Inject(DOCUMENT) private document: Document,
@@ -496,6 +528,10 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
     ngAfterContentInit() {
         this.templates?.forEach((item) => {
             switch (item.getType()) {
+                case 'header':
+                    this.headerTemplate = item.template;
+                    break;
+
                 case 'file':
                     this.fileTemplate = item.template;
                     break;
@@ -518,6 +554,10 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
 
                 case 'cancelicon':
                     this.cancelIconTemplate = item.template;
+                    break;
+
+                case 'empty':
+                    this.emptyTemplate = item.template;
                     break;
 
                 default:
@@ -724,7 +764,7 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
                                 } else {
                                     this.onError.emit({ files: this.files });
                                 }
-
+                                this.uploadedFiles.push(...this.files);
                                 this.clear();
                                 break;
                             case HttpEventType.UploadProgress: {
@@ -757,12 +797,27 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
         this.clearInputElement();
         this.cd.markForCheck();
     }
-
+    /**
+     * Removes a single file.
+     * @param {Event} event - Browser event.
+     * @param {Number} index - Index of the file.
+     * @group Method
+     */
     remove(event: Event, index: number) {
         this.clearInputElement();
         this.onRemove.emit({ originalEvent: event, file: this.files[index] });
         this.files.splice(index, 1);
         this.checkFileLimit(this.files);
+    }
+    /**
+     * Removes uploaded file.
+     * @param {Number} index - Index of the file to be removed.
+     * @group Method
+     */
+    removeUploadedFile(index) {
+        let removedFile = this.uploadedFiles.splice(index, 1)[0];
+        this.uploadedFiles = [...this.uploadedFiles];
+        this.onRemoveUploadedFile.emit({ file: removedFile, files: this.uploadedFiles });
     }
 
     isFileLimitExceeded() {
@@ -815,6 +870,10 @@ export class FileUpload implements AfterViewInit, AfterContentInit, OnInit, OnDe
 
     hasFiles(): boolean {
         return this.files && this.files.length > 0;
+    }
+
+    hasUploadedFiles() {
+        return this.uploadedFiles && this.uploadedFiles.length > 0;
     }
 
     onDragEnter(e: DragEvent) {
