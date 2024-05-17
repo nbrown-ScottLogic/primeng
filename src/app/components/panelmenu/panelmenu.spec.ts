@@ -119,6 +119,7 @@ describe('PanelMenu', () => {
         fixture.detectChanges();
 
         const panelHeaderLinkEl = fixture.debugElement.query(By.css('.p-panelmenu-header-action'));
+        const panelHeaderLinkEl = fixture.debugElement.query(By.css('.p-panelmenu-header-action'));
         expect(panelHeaderLinkEl.nativeElement.href).toContain('primeng');
         expect(panelHeaderLinkEl.nativeElement.title).toEqual('primeng');
         expect(panelHeaderLinkEl.nativeElement.target).toEqual('primeng');
@@ -176,6 +177,7 @@ describe('PanelMenu', () => {
     });
 
     it('should change child url target icon disabled and label', () => {
+    it('should change child url target icon disabled and label', () => {
         panelmenu.model = [
             {
                 label: 'File',
@@ -214,6 +216,7 @@ describe('PanelMenu', () => {
         expect(panelHeaderLinkEl.nativeElement.href).toContain('primeng');
         expect(panelHeaderLinkEl.nativeElement.target).toEqual('primeng');
         expect(panelHeaderLinkEl.nativeElement.disabled).toBeTruthy;
+        expect(panelHeaderLinkEl.nativeElement.disabled).toBeTruthy;
         expect(panelHeaderLinkEl.query(By.css('.p-menuitem-icon')).nativeElement.className).toContain('Primeng ROCKS!');
         expect(panelHeaderLinkEl.nativeElement.innerHTML).toContain("New");
     });
@@ -243,9 +246,11 @@ describe('PanelMenu', () => {
         fixture.detectChanges();
 
         const icon = fixture.debugElement.query(By.css('.p-icon'));
+        const icon = fixture.debugElement.query(By.css('.p-icon'));
         expect(handleClickSpy).toHaveBeenCalled();
         expect(panelmenu.animating).toEqual(true);
         expect(panelmenu.model[0].expanded).toEqual(true);
+        expect(icon.nativeElement.tagName.toLowerCase()).toContain('svg');
         expect(icon.nativeElement.tagName.toLowerCase()).toContain('svg');
     });
 
@@ -266,8 +271,10 @@ describe('PanelMenu', () => {
             }
         ];
         panelmenu.multiple = true;
+        panelmenu.multiple = true;
         fixture.detectChanges();
 
+        const headerLinks = fixture.debugElement.queryAll(By.css('.p-panelmenu-header-content'));
         const headerLinks = fixture.debugElement.queryAll(By.css('.p-panelmenu-header-content'));
         headerLinks[0].nativeElement.click();
         headerLinks[1].nativeElement.click();
@@ -303,6 +310,7 @@ describe('PanelMenu', () => {
         panelmenu.multiple = false;
         fixture.detectChanges();
 
+        const headerLinks = fixture.debugElement.queryAll(By.css('.p-panelmenu-header-content'));
         const headerLinks = fixture.debugElement.queryAll(By.css('.p-panelmenu-header-content'));
         headerLinks[0].nativeElement.click();
         headerLinks[1].nativeElement.click();
